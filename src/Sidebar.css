@@ -36,6 +36,7 @@
 .Sidebar a:hover img.outline {
   opacity: 0;
 }
+
 .SignOut {
   position: absolute;
   bottom: 1rem;
