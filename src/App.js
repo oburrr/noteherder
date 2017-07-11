@@ -1,8 +1,9 @@
 import React, { Component } from 'react'
-import base from './base'
+import base, { auth } from './base'
 
 import './App.css'
 import Main from './Main'
+import SignIn from './SignIn'
 
 class App extends Component {
   constructor() {
@@ -10,33 +11,48 @@ class App extends Component {
 
     this.state = {
       notes: {},
-      currentNote: this.blankNote(),
+      currentNoteId: null,
+      uid: null,
     }
   }
 
-componentDidMount = () => {
-  base.syncState(
-    'notes',
-    {
-      context: this, //what object teh state is on
-      state: 'notes', //which property of state to sync
-    }
-  )
-}
-  blankNote = () => {
-    return {
-      id: null,
-      title: '',
-      body: '',
-    }
+  componentWillMount = () => {
+    this.getUserFromLocalStorage()
+    auth.onAuthStateChanged(
+      (user) => {
+        if (user) {
+          // signed in
+          this.handleAuth(user)
+        } else {
+          // signed out
+          this.handleUnauth()
+        }
+      }
+    )
   }
 
-  setCurrentNote = (note) => {
-    this.setState({ currentNote: note })
+  getUserFromLocalStorage = () => {
+    const uid = localStorage.getItem('uid')
+    if (!uid) return
+    this.setState({ uid })
+  }
+
+  syncNotes = () => {
+    this.bindingRef = base.syncState(
+      `notes/${this.state.uid}`,
+      {
+        context: this,  // what object the state is on
+        state: 'notes', // which property to sync
+      }
+    )
+  }
+
+  setCurrentNoteId = (noteId) => {
+    this.setState({ currentNoteId: noteId })
   }
 
   resetCurrentNote = () => {
-    this.setCurrentNote(this.blankNote())
+    this.setCurrentNoteId(null)
   }
 
   saveNote = (note) => {
@@ -47,36 +63,72 @@ componentDidMount = () => {
     notes[note.id] = note
 
     this.setState({ notes })
-    this.setCurrentNote(note)
+    this.setCurrentNoteId(note.id)
   }
 
-  removeCurrentNote = () => {
+  removeNote = (note) => {
     const notes = {...this.state.notes}
-    notes[this.state.currentNote.id] = null
+    notes[note.id] = null
 
     this.setState({ notes })
     this.resetCurrentNote()
   }
 
-  render() {
+  signedIn = () => {
+    return this.state.uid
+  }
+
+  handleAuth = (user) => {
+    localStorage.setItem('uid', user.uid)
+    this.setState(
+      { uid: user.uid },
+      this.syncNotes
+    )
+  }
+
+  handleUnauth = () => {
+    localStorage.removeItem('uid')
+    if (this.bindingRef) {
+      base.removeBinding(this.bindingRef)
+    }
+
+    this.setState({
+      uid: null,
+      notes: {},
+      currentNoteId: null,
+    })
+  }
+
+  signOut = () => {
+    auth.signOut()
+  }
+
+  renderMain() {
     const actions = {
-      setCurrentNote: this.setCurrentNote,
+      setCurrentNoteId: this.setCurrentNoteId,
       resetCurrentNote: this.resetCurrentNote,
       saveNote: this.saveNote,
-      removeCurrentNote: this.removeCurrentNote,
+      removeNote: this.removeNote,
+      signOut: this.signOut,
     }
 
     const noteData = {
       notes: this.state.notes,
-      currentNote: this.state.currentNote,
+      currentNoteId: this.state.currentNoteId,
     }
 
     return (
+      <Main
+        {...actions}
+        {...noteData}
+      />
+    )
+  }
+
+  render() {
+    return (
       <div className="App">
-        <Main
-          {...actions}
-          {...noteData}
-        />
+        { this.signedIn() ? this.renderMain() : <SignIn /> }
       </div>
     );
   }
