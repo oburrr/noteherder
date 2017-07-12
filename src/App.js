@@ -1,9 +1,10 @@
 import React, { Component } from 'react'
-import base, { auth } from './base'
+import { Route, Switch, Redirect } from 'react-router-dom'
 
 import './App.css'
 import Main from './Main'
 import SignIn from './SignIn'
+import base, { auth } from './base'
 
 class App extends Component {
   constructor() {
@@ -105,7 +106,6 @@ class App extends Component {
 
   renderMain() {
     const actions = {
-      setCurrentNoteId: this.setCurrentNoteId,
       resetCurrentNote: this.resetCurrentNote,
       saveNote: this.saveNote,
       removeNote: this.removeNote,
@@ -128,7 +128,25 @@ class App extends Component {
   render() {
     return (
       <div className="App">
-        { this.signedIn() ? this.renderMain() : <SignIn /> }
+        <Switch>
+          <Route
+            path="/sign-in"
+            render={() => (
+              this.signedIn()
+                ? <Redirect to="/notes" />
+                : <SignIn />
+            )}
+          />
+          <Route
+            path="/notes"
+            render={() => (
+              this.signedIn()
+                ? this.renderMain()
+                : <Redirect to="/sign-in" />
+            )}
+          />
+          <Route render={() => <Redirect to="/notes" /> } />
+        </Switch>
       </div>
     );
   }
