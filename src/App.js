@@ -12,8 +12,8 @@ class App extends Component {
 
     this.state = {
       notes: {},
-      currentNoteId: null,
       uid: null,
+      firebaseNotesSynced: false,
     }
   }
 
@@ -44,27 +44,26 @@ class App extends Component {
       {
         context: this,  // what object the state is on
         state: 'notes', // which property to sync
+        then: () => this.setState({ firebaseNotesSynced: true })
       }
     )
   }
 
-  setCurrentNoteId = (noteId) => {
-    this.setState({ currentNoteId: noteId })
-  }
-
-  resetCurrentNote = () => {
-    this.setCurrentNoteId(null)
-  }
-
   saveNote = (note) => {
-    const notes = {...this.state.notes}
+    let shouldRedirect = false
     if (!note.id) {
       note.id = Date.now()
+      shouldRedirect = true
     }
+
+    const notes = {...this.state.notes}
     notes[note.id] = note
 
     this.setState({ notes })
-    this.setCurrentNoteId(note.id)
+
+    if (shouldRedirect) {
+      this.props.history.push(`/notes/${note.id}`)
+    }
   }
 
   removeNote = (note) => {
@@ -72,7 +71,7 @@ class App extends Component {
     notes[note.id] = null
 
     this.setState({ notes })
-    this.resetCurrentNote()
+    this.props.history.push('/notes')
   }
 
   signedIn = () => {
@@ -96,7 +95,6 @@ class App extends Component {
     this.setState({
       uid: null,
       notes: {},
-      currentNoteId: null,
     })
   }
 
@@ -106,21 +104,16 @@ class App extends Component {
 
   renderMain() {
     const actions = {
-      resetCurrentNote: this.resetCurrentNote,
       saveNote: this.saveNote,
       removeNote: this.removeNote,
       signOut: this.signOut,
     }
 
-    const noteData = {
-      notes: this.state.notes,
-      currentNoteId: this.state.currentNoteId,
-    }
-
     return (
       <Main
         {...actions}
-        {...noteData}
+        notes={this.state.notes}
+        firebaseNotesSynced={this.state.firebaseNotesSynced}
       />
     )
   }
